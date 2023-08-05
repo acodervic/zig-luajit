@@ -21,8 +21,6 @@ jobs:
 
       - name: Set up Zig
         uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
 
       - name: Build LuaJIT
         run: |

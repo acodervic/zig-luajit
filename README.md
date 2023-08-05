@@ -38,7 +38,7 @@
 
     ```zig
     const luajit = b.dependency("luajit", .{});
-    exe.addModule("luajit", luajit.module("luajit"));
+    exe.addModule("luajit", luajit.artifact("lib"));
     ```
 
     </details>

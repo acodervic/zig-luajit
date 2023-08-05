@@ -28,8 +28,8 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
     lib.addCSourceFiles(&(CORE_FILES ++ LIB_FILES), &flags);
 
     switch (os) {
-        .windows => lib.addObjectFile("LuaJIT/src/lj_vm.o"),
-        else => lib.addAssemblyFile("LuaJIT/src/lj_vm.S"),
+        .windows => lib.addObjectFile(.{ .path = "LuaJIT/src/lj_vm.o" }),
+        else => lib.addAssemblyFile(.{ .path = "LuaJIT/src/lj_vm.S" }),
     }
 
     const sys_libs = .{"m"} ++ .{switch (os) {
@@ -143,7 +143,7 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
         .optimize = .ReleaseSmall,
         .link_libc = true,
     });
-    minilua.addCSourceFile("LuaJIT/src/host/minilua.c", minilua_flags.slice());
+    minilua.addCSourceFile(.{ .file = .{ .path = "LuaJIT/src/host/minilua.c" }, .flags = minilua_flags.slice() });
     minilua.linkSystemLibrary("m");
 
     const minilua_run = b.addRunArtifact(minilua);
@@ -159,7 +159,7 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
         .link_libc = true,
     });
     buildvm.addCSourceFiles(&VM_FILES, minilua_flags.slice());
-    buildvm.addIncludePath("LuaJIT/src");
+    buildvm.addIncludePath(.{ .path = "LuaJIT/src" });
     buildvm.linkSystemLibrary("m");
     buildvm.step.dependOn(&minilua_run.step);
 
@@ -198,7 +198,7 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
     } });
     lib.step.dependOn(&buildvm_ljvm_run.step);
 
-    const lib_install = b.addInstallArtifact(lib);
+    const lib_install = b.addInstallArtifact(lib, .{});
     lib_step.dependOn(&lib_install.step);
     b.default_step.dependOn(lib_step);
 }
