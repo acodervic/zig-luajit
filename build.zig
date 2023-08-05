@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.mem.Allocator.Error || std.fmt.BufPrintError || error{ UnsupportedCpuArchitecture, Overflow })!void {
     const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
     const version = .{ .major = 2, .minor = 1, .patch = 0 };
     const target_info = try std.zig.system.NativeTargetInfo.detect(target);
     const arch = target_info.target.cpu.arch;
@@ -16,7 +17,7 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
         .name = "luajit",
         .version = version,
         .target = target,
-        .optimize = .ReleaseSafe,
+        .optimize = optimize,
         .link_libc = true,
     });
 
@@ -140,7 +141,7 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
     const minilua = b.addExecutable(.{
         .name = "minilua",
         .target = target,
-        .optimize = .ReleaseSmall,
+        .optimize = optimize,
         .link_libc = true,
     });
     minilua.addCSourceFile(.{ .file = .{ .path = "LuaJIT/src/host/minilua.c" }, .flags = minilua_flags.slice() });
@@ -155,7 +156,7 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
     const buildvm = b.addExecutable(.{
         .name = "buildvm",
         .target = target,
-        .optimize = .ReleaseSmall,
+        .optimize = optimize,
         .link_libc = true,
     });
     buildvm.addCSourceFiles(&VM_FILES, minilua_flags.slice());
