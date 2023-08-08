@@ -29,8 +29,8 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
     lib.addCSourceFiles(&(CORE_FILES ++ LIB_FILES), &flags);
 
     switch (os) {
-        .windows => lib.addObjectFile(.{ .path = "LuaJIT/src/lj_vm.o" }),
-        else => lib.addAssemblyFile(.{ .path = "LuaJIT/src/lj_vm.S" }),
+        .windows => lib.addObjectFile(.{ .path = LUAJIT_DIR ++ "lj_vm.o" }),
+        else => lib.addAssemblyFile(.{ .path = LUAJIT_DIR ++ "lj_vm.S" }),
     }
 
     const sys_libs = .{"m"} ++ .{switch (os) {
@@ -144,13 +144,13 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
         .optimize = optimize,
         .link_libc = true,
     });
-    minilua.addCSourceFile(.{ .file = .{ .path = "LuaJIT/src/host/minilua.c" }, .flags = minilua_flags.slice() });
+    minilua.addCSourceFile(.{ .file = .{ .path = LUAJIT_HOST_DIR ++ "minilua.c" }, .flags = minilua_flags.slice() });
     minilua.linkSystemLibrary("m");
 
     const minilua_run = b.addRunArtifact(minilua);
     minilua_run.addArg("../dynasm/dynasm.lua");
     minilua_run.addArgs(dasm_opts_arr.slice());
-    minilua_run.cwd = "LuaJIT/src";
+    minilua_run.cwd = LUAJIT_DIR;
 
     // Build VM executable
     const buildvm = b.addExecutable(.{
@@ -160,7 +160,7 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
         .link_libc = true,
     });
     buildvm.addCSourceFiles(&VM_FILES, minilua_flags.slice());
-    buildvm.addIncludePath(.{ .path = "LuaJIT/src" });
+    buildvm.addIncludePath(.{ .path = LUAJIT_DIR });
     buildvm.linkSystemLibrary("m");
     buildvm.step.dependOn(&minilua_run.step);
 
@@ -170,13 +170,13 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
         inline for (LIB_FILES) |LIB_FILE| {
             buildvm_def_run.addArg(std.fs.path.basename(LIB_FILE));
         }
-        buildvm_def_run.cwd = "LuaJIT/src";
+        buildvm_def_run.cwd = LUAJIT_DIR;
         lib.step.dependOn(&buildvm_def_run.step);
     }
 
     const buildvm_folddef_run = b.addRunArtifact(buildvm);
     buildvm_folddef_run.addArgs(&.{ "-m", "folddef", "-o", "lj_folddef.h", "lj_opt_fold.c" });
-    buildvm_folddef_run.cwd = "LuaJIT/src";
+    buildvm_folddef_run.cwd = LUAJIT_DIR;
     lib.step.dependOn(&buildvm_folddef_run.step);
 
     const buildvm_vmdef_run = b.addRunArtifact(buildvm);
@@ -184,11 +184,11 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
     inline for (LIB_FILES) |LIB_FILE| {
         buildvm_vmdef_run.addArg(std.fs.path.basename(LIB_FILE));
     }
-    buildvm_vmdef_run.cwd = "LuaJIT/src";
+    buildvm_vmdef_run.cwd = LUAJIT_DIR;
     lib.step.dependOn(&buildvm_vmdef_run.step);
 
     const buildvm_ljvm_run = b.addRunArtifact(buildvm);
-    buildvm_ljvm_run.cwd = "LuaJIT/src";
+    buildvm_ljvm_run.cwd = LUAJIT_DIR;
     buildvm_ljvm_run.addArgs(&.{ "-m", switch (os) {
         .macos, .ios => "machasm",
         .windows => "peobj",
@@ -204,85 +204,89 @@ pub fn build(b: *std.Build) (std.zig.system.NativeTargetInfo.DetectError || std.
     b.default_step.dependOn(lib_step);
 }
 
+const LUAJIT_DIR = "LuaJIT/src/";
+
 const CORE_FILES = .{
-    "LuaJIT/src/lib_aux.c",
-    "LuaJIT/src/lib_init.c",
-    "LuaJIT/src/lj_alloc.c",
-    "LuaJIT/src/lj_api.c",
-    "LuaJIT/src/lj_asm.c",
-    "LuaJIT/src/lj_assert.c",
-    "LuaJIT/src/lj_bc.c",
-    "LuaJIT/src/lj_bcread.c",
-    "LuaJIT/src/lj_bcwrite.c",
-    "LuaJIT/src/lj_buf.c",
-    "LuaJIT/src/lj_carith.c",
-    "LuaJIT/src/lj_ccall.c",
-    "LuaJIT/src/lj_ccallback.c",
-    "LuaJIT/src/lj_cconv.c",
-    "LuaJIT/src/lj_cdata.c",
-    "LuaJIT/src/lj_char.c",
-    "LuaJIT/src/lj_clib.c",
-    "LuaJIT/src/lj_cparse.c",
-    "LuaJIT/src/lj_crecord.c",
-    "LuaJIT/src/lj_ctype.c",
-    "LuaJIT/src/lj_debug.c",
-    "LuaJIT/src/lj_dispatch.c",
-    "LuaJIT/src/lj_err.c",
-    "LuaJIT/src/lj_ffrecord.c",
-    "LuaJIT/src/lj_func.c",
-    "LuaJIT/src/lj_gc.c",
-    "LuaJIT/src/lj_gdbjit.c",
-    "LuaJIT/src/lj_ir.c",
-    "LuaJIT/src/lj_lex.c",
-    "LuaJIT/src/lj_lib.c",
-    "LuaJIT/src/lj_load.c",
-    "LuaJIT/src/lj_mcode.c",
-    "LuaJIT/src/lj_meta.c",
-    "LuaJIT/src/lj_obj.c",
-    "LuaJIT/src/lj_opt_dce.c",
-    "LuaJIT/src/lj_opt_fold.c",
-    "LuaJIT/src/lj_opt_loop.c",
-    "LuaJIT/src/lj_opt_mem.c",
-    "LuaJIT/src/lj_opt_narrow.c",
-    "LuaJIT/src/lj_opt_sink.c",
-    "LuaJIT/src/lj_opt_split.c",
-    "LuaJIT/src/lj_parse.c",
-    "LuaJIT/src/lj_prng.c",
-    "LuaJIT/src/lj_profile.c",
-    "LuaJIT/src/lj_record.c",
-    "LuaJIT/src/lj_serialize.c",
-    "LuaJIT/src/lj_snap.c",
-    "LuaJIT/src/lj_state.c",
-    "LuaJIT/src/lj_str.c",
-    "LuaJIT/src/lj_strfmt_num.c",
-    "LuaJIT/src/lj_strfmt.c",
-    "LuaJIT/src/lj_strscan.c",
-    "LuaJIT/src/lj_tab.c",
-    "LuaJIT/src/lj_trace.c",
-    "LuaJIT/src/lj_udata.c",
-    "LuaJIT/src/lj_vmevent.c",
-    "LuaJIT/src/lj_vmmath.c",
+    LUAJIT_DIR ++ "lib_aux.c",
+    LUAJIT_DIR ++ "lib_init.c",
+    LUAJIT_DIR ++ "lj_alloc.c",
+    LUAJIT_DIR ++ "lj_api.c",
+    LUAJIT_DIR ++ "lj_asm.c",
+    LUAJIT_DIR ++ "lj_assert.c",
+    LUAJIT_DIR ++ "lj_bc.c",
+    LUAJIT_DIR ++ "lj_bcread.c",
+    LUAJIT_DIR ++ "lj_bcwrite.c",
+    LUAJIT_DIR ++ "lj_buf.c",
+    LUAJIT_DIR ++ "lj_carith.c",
+    LUAJIT_DIR ++ "lj_ccall.c",
+    LUAJIT_DIR ++ "lj_ccallback.c",
+    LUAJIT_DIR ++ "lj_cconv.c",
+    LUAJIT_DIR ++ "lj_cdata.c",
+    LUAJIT_DIR ++ "lj_char.c",
+    LUAJIT_DIR ++ "lj_clib.c",
+    LUAJIT_DIR ++ "lj_cparse.c",
+    LUAJIT_DIR ++ "lj_crecord.c",
+    LUAJIT_DIR ++ "lj_ctype.c",
+    LUAJIT_DIR ++ "lj_debug.c",
+    LUAJIT_DIR ++ "lj_dispatch.c",
+    LUAJIT_DIR ++ "lj_err.c",
+    LUAJIT_DIR ++ "lj_ffrecord.c",
+    LUAJIT_DIR ++ "lj_func.c",
+    LUAJIT_DIR ++ "lj_gc.c",
+    LUAJIT_DIR ++ "lj_gdbjit.c",
+    LUAJIT_DIR ++ "lj_ir.c",
+    LUAJIT_DIR ++ "lj_lex.c",
+    LUAJIT_DIR ++ "lj_lib.c",
+    LUAJIT_DIR ++ "lj_load.c",
+    LUAJIT_DIR ++ "lj_mcode.c",
+    LUAJIT_DIR ++ "lj_meta.c",
+    LUAJIT_DIR ++ "lj_obj.c",
+    LUAJIT_DIR ++ "lj_opt_dce.c",
+    LUAJIT_DIR ++ "lj_opt_fold.c",
+    LUAJIT_DIR ++ "lj_opt_loop.c",
+    LUAJIT_DIR ++ "lj_opt_mem.c",
+    LUAJIT_DIR ++ "lj_opt_narrow.c",
+    LUAJIT_DIR ++ "lj_opt_sink.c",
+    LUAJIT_DIR ++ "lj_opt_split.c",
+    LUAJIT_DIR ++ "lj_parse.c",
+    LUAJIT_DIR ++ "lj_prng.c",
+    LUAJIT_DIR ++ "lj_profile.c",
+    LUAJIT_DIR ++ "lj_record.c",
+    LUAJIT_DIR ++ "lj_serialize.c",
+    LUAJIT_DIR ++ "lj_snap.c",
+    LUAJIT_DIR ++ "lj_state.c",
+    LUAJIT_DIR ++ "lj_str.c",
+    LUAJIT_DIR ++ "lj_strfmt_num.c",
+    LUAJIT_DIR ++ "lj_strfmt.c",
+    LUAJIT_DIR ++ "lj_strscan.c",
+    LUAJIT_DIR ++ "lj_tab.c",
+    LUAJIT_DIR ++ "lj_trace.c",
+    LUAJIT_DIR ++ "lj_udata.c",
+    LUAJIT_DIR ++ "lj_vmevent.c",
+    LUAJIT_DIR ++ "lj_vmmath.c",
 };
 
 const LIB_FILES = .{
-    "LuaJIT/src/lib_base.c",
-    "LuaJIT/src/lib_bit.c",
-    "LuaJIT/src/lib_buffer.c",
-    "LuaJIT/src/lib_debug.c",
-    "LuaJIT/src/lib_ffi.c",
-    "LuaJIT/src/lib_io.c",
-    "LuaJIT/src/lib_jit.c",
-    "LuaJIT/src/lib_math.c",
-    "LuaJIT/src/lib_os.c",
-    "LuaJIT/src/lib_package.c",
-    "LuaJIT/src/lib_string.c",
-    "LuaJIT/src/lib_table.c",
+    LUAJIT_DIR ++ "lib_base.c",
+    LUAJIT_DIR ++ "lib_bit.c",
+    LUAJIT_DIR ++ "lib_buffer.c",
+    LUAJIT_DIR ++ "lib_debug.c",
+    LUAJIT_DIR ++ "lib_ffi.c",
+    LUAJIT_DIR ++ "lib_io.c",
+    LUAJIT_DIR ++ "lib_jit.c",
+    LUAJIT_DIR ++ "lib_math.c",
+    LUAJIT_DIR ++ "lib_os.c",
+    LUAJIT_DIR ++ "lib_package.c",
+    LUAJIT_DIR ++ "lib_string.c",
+    LUAJIT_DIR ++ "lib_table.c",
 };
 
+const LUAJIT_HOST_DIR = LUAJIT_DIR ++ "host/";
+
 const VM_FILES = .{
-    "LuaJIT/src/host/buildvm_asm.c",
-    "LuaJIT/src/host/buildvm_fold.c",
-    "LuaJIT/src/host/buildvm_lib.c",
-    "LuaJIT/src/host/buildvm_peobj.c",
-    "LuaJIT/src/host/buildvm.c",
+    LUAJIT_HOST_DIR ++ "buildvm_asm.c",
+    LUAJIT_HOST_DIR ++ "buildvm_fold.c",
+    LUAJIT_HOST_DIR ++ "buildvm_lib.c",
+    LUAJIT_HOST_DIR ++ "buildvm_peobj.c",
+    LUAJIT_HOST_DIR ++ "buildvm.c",
 };
